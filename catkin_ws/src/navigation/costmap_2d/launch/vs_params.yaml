@@ -1,0 +1,19 @@
+#local_costmap:
+global_frame: /map
+robot_base_frame: /base_link
+update_frequency: 30.0
+publish_frequency: 30.0
+static_map: false
+rolling_window: true
+width: 10.0
+height: 10.0
+resolution: 0.1
+map_type: costmap
+footprint: [[-0.325, -0.325], [-0.325, 0.325], [0.325, 0.325], [0.46, 0.0], [0.325, -0.325]]
+track_unknown_space: false
+
+plugins: 
+- {name: virtual_scan_layer, type: "costmap_2d::VirtualScanLayer"}
+virtual_scan_layer:
+    virtual_scan_source: base_scan
+    base_scan: {data_type: LaserScan, sensor_frame: /camera_depth_frame, topic: /scan_dl}

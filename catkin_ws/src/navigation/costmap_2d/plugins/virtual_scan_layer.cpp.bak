@@ -1,0 +1,144 @@
+#include <costmap_2d/virtual_scan_layer.h>
+#include <pluginlib/class_list_macros.h>
+#include "sensor_msgs/LaserScan.h"
+
+PLUGINLIB_EXPORT_CLASS(costmap_2d::VirtualScanLayer, costmap_2d::Layer)
+
+using costmap_2d::LETHAL_OBSTACLE;
+using costmap_2d::FREE_SPACE;
+using costmap_2d::NO_INFORMATION;
+
+//void laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser_scan) {
+//    float maxRadius = 3.0; // max look range
+//    float radiusStep = 0.1; // radius step size
+//    float buffer = 0.05;
+//    float totalAngleRange = (laser_scan->angle_max - laser_scan->angle_min);
+//    int numRanges = laser_scan->ranges.size();
+//    int rayAngleSteps = 10; // sweep size in idx
+//    float rayAngleSize = laser_scan->angle_increment * rayAngleSteps; // sweep step of angles
+//
+//    int numRadiusSteps = std::ceil(maxRadius / radiusStep);
+//    int numAngleSteps = numRanges / rayAngleSteps;
+//    int *occMap = new int[numRadiusSteps * numAngleSteps];
+//
+//    for (int range = 0; range < numRadiusSteps - 1; range++) { // sweep across distance
+//        for (int angle = 0; angle < numAngleSteps - 1; angle++) { // sweep across rays
+//            int startIdx = angle * rayAngleSteps;
+//            int endIdx = std::min(laser_scan->angle_max, laser_scan->angle_min + (angle+1)*rayAngleSteps);
+//            for (int step = 0; step < rayAngleSteps; step++) {
+//                int curIdx = std::min(startIdx + step, numRanges); 
+//                if (std::isinf(laser_scan->ranges[curIdx]) || (range*radiusStep - buffer) < laser_scan->ranges[curIdx]) {
+//                    occMap[range * numAngleSteps + angle] = FREE_SPACE;
+//                }
+//                else if ((range*radiusStep + buffer) <= laser_scan->ranges[curIdx]) {
+//                    occMap[range * numAngleSteps + angle] = LETHAL_OBSTACLE;
+//                    break;
+//                }
+//                else {
+//                    occMap[range * numAngleSteps + angle] = NO_INFORMATION;
+//                    break;
+//                }
+//            }
+//        }
+//    }
+//    for (int i = numRadiusSteps-1; i >=0 ; i--) {
+//        for (int j = 0; j < numAngleSteps-1; j++) {
+//            printf("%i ", occMap[i*numAngleSteps + j]);
+//        }
+//        printf("\n");
+//    }
+//}
+
+namespace costmap_2d {
+
+    VirtualScanLayer::VirtualScanLayer() {}
+    
+    void VirtualScanLayer::onInitialize() {
+        std::string source, topic, sensor_frame, data_type;
+        ros::NodeHandle nh("~/" + name_), g_nh;
+        ros::NodeHandle source_node(nh, topic);
+        global_frame_ = layered_costmap_->getGlobalFrameID();
+
+        nh.param("virtual_scan_sources", topic, std::string(""));
+        ROS_INFO("    Subscribed to Topic: %s", topic.c_str());
+        source_node.param("topic", topic, source);
+        source_node.param("data_type", data_type, std::string("LaserScan"));
+        source_node.param("sensor_frame", sensor_frame, std::string(""));
+
+        default_value_ = NO_INFORMATION;
+        matchSize();
+    
+        dsrv_ = new dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>(nh);
+        dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>::CallbackType cb = boost::bind(
+            &VirtualScanLayer::reconfigureCB, this, _1, _2);
+        dsrv_->setCallback(cb);
+
+        if (data_type == "LaserScan") {
+          boost::shared_ptr < message_filters::Subscriber<sensor_msgs::LaserScan>
+              > sub(new message_filters::Subscriber<sensor_msgs::LaserScan>(g_nh, topic, 50));
+
+          boost::shared_ptr < tf::MessageFilter<sensor_msgs::LaserScan>
+              > filter(new tf::MessageFilter<sensor_msgs::LaserScan>(*sub, *tf_, global_frame_, 50));
+
+          filter->registerCallback(boost::bind(&VirtualScanLayer::laserScanCallback, this, _1));
+          ROS_INFO("at least");
+        }
+    }
+
+    void VirtualScanLayer::laserScanCallback(const sensor_msgs::LaserScanConstPtr& message) {
+        ROS_INFO("hihihi");
+    }
+
+    void VirtualScanLayer::matchSize() {
+        Costmap2D* master = layered_costmap_->getCostmap();
+        resizeMap(master->getSizeInCellsX(), master->getSizeInCellsY(), master->getResolution(), 
+                  master->getOriginX(), master->getOriginY());
+    }
+    
+    void VirtualScanLayer::reconfigureCB(costmap_2d::GenericPluginConfig &config, uint32_t level) {
+        enabled_ = config.enabled;
+    }
+
+    
+    void VirtualScanLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x,
+                                        double* min_y, double* max_x, double* max_y) {
+      if (!enabled_) {
+          return;
+      }
+
+      double mark_x = 0;//robot_x + cos(robot_yaw);
+      double mark_y = 0;//robot_y + sin(robot_yaw);
+      //unsigned int mx;
+      //unsigned int my;
+
+      //ROS_INFO("x: %f y: %f, yaw: %f", robot_x, robot_y, robot_yaw);
+      //if(worldToMap(mark_x, mark_y, mx, my)) {
+      //    setCost(mx, my, LETHAL_OBSTACLE);
+      //    ROS_INFO("mx: %d my: %d", mx, my);
+      //}
+    
+      *min_x = std::min(*min_x, mark_x);
+      *min_y = std::min(*min_y, mark_y);
+      *max_x = std::max(*max_x, mark_x);
+      *max_y = std::max(*max_y, mark_y);
+    }
+    
+    void VirtualScanLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {
+        if (!enabled_) {
+           return;
+        }
+        for (int j = min_j; j < max_j; j++) {
+            for (int i = min_i; i < max_i; i++) {
+                int index = getIndex(i, j);
+                ROS_INFO("index: %d", index);
+                ROS_INFO("i: %d, j: %d", i, j);
+                //if (costmap_[index] == NO_INFORMATION) {
+                //    ROS_INFO("NO INFO");
+                //    continue;
+                //}
+                ROS_INFO("costmap_: %d", costmap_[index]);
+                master_grid.setCost(i, j, costmap_[index]);
+            }
+        }
+    }
+} // end namespace
