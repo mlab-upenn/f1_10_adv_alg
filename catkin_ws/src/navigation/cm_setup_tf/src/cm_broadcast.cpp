@@ -16,12 +16,16 @@ int main(int argc, char** argv) {
             ros::Time::now(), "map", "base_link"));
         broadcaster.sendTransform(
           tf::StampedTransform(
-            tf::Transform(tf::Quaternion(0,0,0,1), tf::Vector3(0.2,0,0)),
+            tf::Transform(tf::Quaternion(0,0,0,1), tf::Vector3(0.2,0.15,0)),
             ros::Time::now(), "base_link", "camera_depth_frame"));
         broadcaster.sendTransform(
           tf::StampedTransform(
             tf::Transform(tf::Quaternion(0,0,0,1), tf::Vector3(0,0,0)),
             ros::Time::now(), "base_link", "laser"));
+        broadcaster.sendTransform(
+          tf::StampedTransform(
+            tf::Transform(tf::Quaternion(0,0,0,1), tf::Vector3(0,0,0)),
+            ros::Time::now(), "base_link", "camera_rgb_optical_frame"));
         r.sleep();
     }
 }

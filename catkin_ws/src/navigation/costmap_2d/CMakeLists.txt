@@ -84,6 +84,9 @@ catkin_package(
         Boost
 )
 
+#SET(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
+SET(CMAKE_CXX_FLAGS "-std=c++11 -O2 -g -Wall ${CMAKE_CXX_FLAGS}")
+
 add_library(costmap_2d
   src/array_parser.cpp
   src/costmap_2d.cpp
@@ -134,6 +137,7 @@ target_link_libraries(costmap_2d_cloud
 add_executable(costmap_2d_node src/costmap_2d_node.cpp)
 target_link_libraries(costmap_2d_node
     costmap_2d
+    armadillo
     )
 
 install( TARGETS

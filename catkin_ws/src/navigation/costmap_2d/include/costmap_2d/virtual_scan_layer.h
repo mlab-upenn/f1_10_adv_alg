@@ -1,6 +1,9 @@
 #ifndef VIRTUAL_SCAN_LAYER_H_
 #define VIRTUAL_SCAN_LAYER_H_
 
+#include <math.h>
+#include <vector>
+
 #include <ros/ros.h>
 #include <costmap_2d/layer.h>
 #include <costmap_2d/layered_costmap.h>
@@ -23,6 +26,8 @@
 #include <costmap_2d/ObstaclePluginConfig.h>
 #include <costmap_2d/footprint.h>
 
+#include <armadillo>
+
 namespace costmap_2d {
     class VirtualScanLayer : public CostmapLayer {
     public:
@@ -43,12 +48,9 @@ namespace costmap_2d {
       void laserScanCallback(const sensor_msgs::LaserScanConstPtr& message,
                              const boost::shared_ptr<costmap_2d::ObservationBuffer>& buffer);
       
-      int* occMap;
     
     protected:
       virtual void setupDynamicReconfigure(ros::NodeHandle& nh);
-    
-      bool getMarkingObservations(std::vector<costmap_2d::Observation>& marking_observations) const;
     
       std::string global_frame_;  ///< @brief The global frame for the costmap
       double max_obstacle_height_;  ///< @brief Max Obstacle Height
@@ -66,6 +68,12 @@ namespace costmap_2d {
       dynamic_reconfigure::Server<costmap_2d::ObstaclePluginConfig> *dsrv_;
     
       int combination_method_;
+      bool init_;
+      double cm_width_, cm_height_, cm_resolution_;
+      double maxRadius, radiusStep;
+      int rayAngleSteps;  
+      int* occMap;
+      std::vector<int> cm2om;
     
     private:
       void reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint32_t level);
