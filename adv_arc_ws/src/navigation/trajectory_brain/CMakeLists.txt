@@ -62,8 +62,8 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(trajectory_brain src/trajectory_brain.cpp src/rbfa1.cpp src/rbfa2.cpp src/rbfa3.cpp src/rbfa4.cpp src/rbfa5.cpp)
-target_link_libraries(trajectory_brain ${catkin_LIBRARIES})
+add_executable(trajectory_brain src/trajectory_brain.cpp)
+target_link_libraries(trajectory_brain ${catkin_LIBRARIES} ${CMAKE_CURRENT_SOURCE_DIR}/libs/libtrajgen.a)
 add_dependencies(trajectory_brain ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_dependencies(trajectory_brain trajectory_cost ${catkin_EXPORTED_TARGETS})
 
