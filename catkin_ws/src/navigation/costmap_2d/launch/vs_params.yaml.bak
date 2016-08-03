@@ -16,6 +16,6 @@ plugins:
 - {name: virtual_scan_layer, type: "costmap_2d::VirtualScanLayer"}
 virtual_scan_layer:
     virtual_scan_source: base_scan
-    base_scan: {data_type: LaserScan, sensor_frame: /laser, topic: /scan,
-                max_radius: 10.0, radius_step: 0.05, ray_angle_steps: 5}
+    base_scan: {data_type: LaserScan, sensor_frame: /camera_depth_frame, topic: /scan_dl,
+                max_radius: 5.0, radius_step: 0.1, ray_angle_steps: 10}
     resolution: 0.05

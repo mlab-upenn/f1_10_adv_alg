@@ -1,0 +1,97 @@
+#include <ros/ros.h>
+#include <tf/transform_broadcaster.h>
+#include <geometry_msgs/Pose.h>
+#include <visualization_msgs/MarkerArray.h>
+
+class posePublish {
+    public:
+        posePublish() {
+             ros::Publisher pub = n.advertise<visualization_msgs::MarkerArray>("/apriltags/maker_array_ls", 1);
+             ros::Subscriber sub = n.subscribe("/apriltags/marker_array", 1, &posePublish::poseCallback, this);
+        }
+        void poseCallback(const visualization_msgs::MarkerArray::ConstPtr& msg){
+            pub.publish(msg);
+            if (!msg->markers.empty()) {
+                static tf::TransformBroadcaster br;
+                tf::Transform transform;
+                //geometry_msgs::TransformStamped pose_trans;
+                //pose_trans.header.stamp = msg->markers[0].header.stamp;
+                //pose_trans.header.frame_id = "camera_rgb_optical_frame"; 
+                //pose_trans.child_frame_id = "base_link";
+                //pose_trans.transform.translation.x = msg->markers[0].pose.position.z;
+                //pose_trans.transform.translation.y = -msg->markers[0].pose.position.x;
+                //pose_trans.transform.translation.z = 0.0;
+                //pose_trans.transform.rotation = msg->markers[0].pose.orientation;
+                //ROS_INFO("Sending TF broadcast");
+                //br.sendTransform(pose_trans);
+                //transform.setOrigin( tf::Vector3(0.0, 0.0, 0.0) );
+                transform.setOrigin( tf::Vector3(msg->markers[0].pose.position.z, -msg->markers[0].pose.position.x, 0.0) );
+                tf::Quaternion q (0, 0, 0, 1);
+                transform.setRotation(q);
+                //br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "apriltag_frame", "camera_rgb_optical_frame"));
+                //br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "base_link", "apriltag_frame"));
+                br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "apriltag_frame", "base_link"));
+                
+                visualization_msgs::MarkerArray marker_transforms;
+                visualization_msgs::Marker marker_transform;
+                //marker_transform.header.frame_id = msg->markers[0].header.frame_id;
+                marker_transform.header.frame_id = "apriltag_frame"; 
+                marker_transform.header.stamp = msg->markers[0].header.stamp;
+                marker_transform.lifetime = msg->markers[0].lifetime;
+                marker_transform.ns = msg->markers[0].ns;
+                marker_transform.id = msg->markers[0].id;
+                marker_transform.type = msg->markers[0].type;
+                marker_transform.scale = msg->markers[0].scale;
+                marker_transform.action = msg->markers[0].action;
+                marker_transform.pose.position.x = msg->markers[0].pose.position.z;
+                marker_transform.pose.position.y = -msg->markers[0].pose.position.x;
+                marker_transform.pose.position.z = 0.0;
+                marker_transform.pose.orientation = msg->markers[0].pose.orientation;
+                marker_transform.color = msg->markers[0].color;
+                marker_transforms.markers.push_back(marker_transform);
+                pub.publish(marker_transforms);
+            }
+        }
+    private:
+        ros::NodeHandle n;
+        ros::Publisher pub;
+        ros::Subscriber sub;
+};
+
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "cm_setup_tf");
+    //ros::NodeHandle n;
+    //ros::Publisher pub = n.advertise<visualization_msgs::MarkerArray>("/apriltags/maker_array_ls", 1);
+    //ros::Subscriber sub = n.subscribe("/apriltags/marker_array", 1000, &poseCallback);
+    //ros::Rate r(100);
+
+    //tf::TransformBroadcaster broadcaster;
+    posePublish pps;
+    ros::spin();
+
+    //while (n.ok()) {
+    //    broadcaster.sendTransform(
+    //      tf::StampedTransform(
+    //        tf::Transform(tf::Quaternion(0,0,0,1), tf::Vector3(0,0,0)),
+    //        ros::Time::now(), "map", "base_link"));
+    //    broadcaster.sendTransform(
+    //      tf::StampedTransform(
+    //        tf::Transform(tf::Quaternion(0,0,0,1), tf::Vector3(0.2,0.15,0)),
+    //        ros::Time::now(), "base_link", "camera_depth_frame"));
+    //    broadcaster.sendTransform(
+    //      tf::StampedTransform(
+    //        tf::Transform(tf::Quaternion(0,0,0,1), tf::Vector3(0,0,0)),
+    //        ros::Time::now(), "base_link", "laser"));
+    //    //broadcaster.sendTransform(
+    //    //  tf::StampedTransform(
+    //    //    tf::Transform(tf::Quaternion(0,0,0,1), tf::Vector3(0.2,0.15,0)),
+    //    //    ros::Time::now(), "base_link", "camera_rgb_optical_frame"));
+    //    //broadcaster.sendTransform(
+    //    //  tf::StampedTransform(
+    //    //    tf::Transform(tf::Quaternion(0,0,0,1), tf::Vector3(0.2,0.15,0)),
+    //    //    ros::Time::now(), "base_link", "apriltag_frame"));
+    //    ros::spinOnce();
+    //    r.sleep();
+    //}
+    return 0;
+}

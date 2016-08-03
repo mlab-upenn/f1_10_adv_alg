@@ -2,10 +2,10 @@
 #include <pluginlib/class_list_macros.h>
 #include <time.h>
 
-//struct timespec start, end;
-//static double TimeSpecToSeconds(struct timespec* ts) {
-//    return (double)ts->tv_sec + (double)ts->tv_nsec / 1000000000.0;
-//}
+struct timespec start, end;
+static double TimeSpecToSeconds(struct timespec* ts) {
+    return (double)ts->tv_sec + (double)ts->tv_nsec / 1000000000.0;
+}
 PLUGINLIB_EXPORT_CLASS(costmap_2d::VirtualScanLayer, costmap_2d::Layer)
 
 using costmap_2d::LETHAL_OBSTACLE;
@@ -97,24 +97,25 @@ namespace costmap_2d {
         if (dsrv_)
             delete dsrv_;
     }
-
     void VirtualScanLayer::reconfigureCB(costmap_2d::ObstaclePluginConfig &config, uint32_t level) {
       enabled_ = config.enabled;
       max_obstacle_height_ = config.max_obstacle_height;
       combination_method_ = config.combination_method;
     }
-
+    
     void VirtualScanLayer::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser_scan,
                                              const boost::shared_ptr<ObservationBuffer>& buffer) {
-        //clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+        clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
         float vbuffer = radiusStep / 2;
+        //float totalAngleRange = (laser_scan->angle_max - laser_scan->angle_min);
         int numRanges = laser_scan->ranges.size();
         float rayAngleSize = laser_scan->angle_increment * rayAngleSteps; // sweep step of angles
 
         int numRadiusSteps = std::ceil(maxRadius / radiusStep) - 1;
         int numAngleSteps = (numRanges / rayAngleSteps) - 1;
-        occMap = new int[numRadiusSteps * numAngleSteps];
+        //int numSteps = laser_scan->ranges.size(); 
+        int* occMap = new int[numRadiusSteps * numAngleSteps];
 
         int x_size = int(cm_width_);
         int y_size = int(cm_height_);
@@ -124,10 +125,13 @@ namespace costmap_2d {
         float max_y;
         if (init_ == true) {
             cm2om.reserve(x_size*y_size*resolution);
+            //cm2om_x.reserve(x_size*y_size*resolution);
+            //cm2om_y.reserve(x_size*y_size*resolution);
 
             max_x = maxRadius * std::max(std::sin(laser_scan->angle_max), std::abs(std::sin(laser_scan->angle_min)));
             max_y = maxRadius;
             for (int ci = 0; ci < x_size*resolution; ci++) {
+                //for (int cj = y_size*resolution/2; cj < y_size*resolution; cj++) {
                 for (int cj = 0; cj < y_size*resolution; cj++) {
                     float x_dist = std::abs((ci * rstep) - x_size/2);
                     float y_dist = std::abs((cj * rstep) - y_size/2);
@@ -144,15 +148,16 @@ namespace costmap_2d {
                                angleStart = (numAngleSteps / 2) - 1;
                                angleEnd = numAngleSteps;
                            }
+                           //for (int angle = 0; angle < numAngleSteps; angle++) {
                            for (int angle = angleStart; angle < angleEnd-1; angle++) {
                                float r1 = range * radiusStep;
                                float r2 = (range+1) * radiusStep;
-                               float a1 = (angle * rayAngleSize) - laser_scan->angle_max;
-                               float a2 = ((angle+1) * rayAngleSize) - laser_scan->angle_max;
-                               float x_h = std::max(std::abs(r2 * std::sin(a1)), std::abs(r2 * std::sin(a2)));
-                               float x_l = std::min(std::abs(r1 * std::sin(a1)), std::abs(r1 * std::sin(a2)));
-                               float y_h = std::max(std::abs(r2 * std::cos(a1)), std::abs(r2 * std::cos(a2)));
-                               float y_l = std::max(std::abs(r1 * std::cos(a1)), std::abs(r1 * std::cos(a2)));
+                               float a1 = angle * rayAngleSize;
+                               float a2 = (angle+1) * rayAngleSize;
+                               float x_h = std::max(r2 * std::sin(a1), r2 * std::sin(a2));
+                               float x_l = std::min(r1 * std::sin(a1), r1 * std::sin(a2));
+                               float y_h = std::max(r2 * std::cos(a1), r2 * std::cos(a2));
+                               float y_l = std::max(r1 * std::cos(a1), r1 * std::cos(a2));
                                float x_h1 = x_h;
                                float y_h1 = y_h;
                                float x_l1 = x_l;
@@ -166,6 +171,7 @@ namespace costmap_2d {
                                }
                                // check occMap limits
                                if ((x_dist < x_h1 && x_dist >= x_l1 && y_dist < y_h1 && y_dist >= y_l1)) {
+                                   //costmap_[(ci-1)*x_size*resolution + cj] = occMap[range * numAngleSteps + angle];
                                    cm2om.push_back(range * numAngleSteps + angle);
                                    found = true;
                                    break;
@@ -180,17 +186,107 @@ namespace costmap_2d {
                        }
                     }
                     else {
+                       //costmap_[(ci-1)*x_size*resolution + cj] = NO_INFORMATION;
+                       //cm2om[(ci-1)*x_size*resolution + cj] = -1;
                        cm2om.push_back(-1);
                     }
                 }
             }
+            printf("size: %d\n", cm2om.size());
+            //for (int ci = 0; ci < x_size*resolution; ci++) {
+            //    for (int cj = 0 ; cj < y_size*resolution; cj++) {
+            //        float x_dist = std::abs((ci * rstep) - x_size/2);
+            //        float y_dist = std::abs((cj * rstep) - y_size/2);
+            //        if (!(x_dist > max_x || y_dist > max_y)) {
+            //           // iterate over occMap
+            //           bool found = false;
+            //           for (int range = 0; range < numRadiusSteps; range++) {
+            //               int angleStart, angleEnd;
+            //               if (ci < x_size*resolution/2) {
+            //                   angleStart = 0;
+            //                   angleEnd = (numAngleSteps / 2) + 1;
+            //               }
+            //               else {
+            //                   angleStart = (numAngleSteps / 2) - 1;
+            //                   angleEnd = numAngleSteps;
+            //               }
+            //               for (int angle = angleStart; angle < angleEnd-1; angle++) {
+            //                   float r1 = range * radiusStep;
+            //                   float r2 = (range+1) * radiusStep;
+            //                   float a1 = angle * rayAngleSize;
+            //                   float a2 = (angle+1) * rayAngleSize;
+            //                   float x_h = std::max(r2 * std::sin(a1), r2 * std::sin(a2));
+            //                   float x_l = std::min(r1 * std::sin(a1), r1 * std::sin(a2));
+            //                   float y_h = std::max(r2 * std::cos(a1), r2 * std::cos(a2));
+            //                   float y_l = std::max(r1 * std::cos(a1), r1 * std::cos(a2));
+            //                   float x_h1 = x_h;
+            //                   float y_h1 = y_h;
+            //                   float x_l1 = x_l;
+            //                   float y_l1 = y_l;
+            //                   if (a1 < (rayAngleSize/2) || a1 > (-rayAngleSize/2) ||
+            //                       a2 < (rayAngleSize/2) || a2 > (-rayAngleSize/2)) {
+            //                       x_h1 = x_h + 0.05;
+            //                       y_h1 = y_h + 0.05;
+            //                       x_l1 = x_l - 0.05;
+            //                       y_l1 = y_l - 0.05;
+            //                   }
+            //                   // check occMap limits
+            //                   if ((x_dist < x_h1 && x_dist >= x_l1 && y_dist < y_h1 && y_dist >= y_l1)) {
+            //                       cm2om_x.push_back(range);
+            //                       cm2om_y.push_back(angle);
+            //                       found = true;
+            //                       break;
+            //                   }
+            //               }
+            //               if (found) {
+            //                   break;
+            //               }
+            //               if (range == numRadiusSteps - 1) {
+            //                   cm2om_x.push_back(-1);
+            //                   cm2om_y.push_back(-1);
+            //               }
+            //           }
+            //        }
+            //        else {
+            //            cm2om_x.push_back(-1);
+            //            cm2om_y.push_back(-1);
+            //        }
+            //    }
+            //}
             init_ = false;
-            ROS_INFO("finished init");
         }
+        // min of every rayAngleStep angles
+        //arma::vec laserscanData(numAngleSteps);
+        //for (int i = 0; i < numAngleSteps; i++) {
+        //    std::vector<double> sub(&laser_scan->ranges[i*rayAngleSteps],&laser_scan->ranges[(i+1)*rayAngleSteps-1]);
+        //    arma::vec q = sub;
+        //    q.transform( [&](double val) { return (std::isnan(val) ? double(laser_scan->range_max) : val); } );
+        //    laserscanData(i) = q.min();
+        //}
+
+        // create occupancyMap using virtualScan
+        //arma::mat OMap(numRadiusSteps, numAngleSteps);
+        //for (int range = 0; range < numRadiusSteps; range++) {
+        //    arma::vec curdata = laserscanData; 
+        //    curdata.transform( [&](double val) 
+        //        { 
+        //            if ((val > (range - vbuffer)) && (val <= (range + vbuffer))) {
+        //                return LETHAL_OBSTACLE;
+        //            }
+        //            else if (val > (range + vbuffer)) {
+        //                return OCCLUDED;
+        //            }
+        //            else {
+        //                return FREE_SPACE;
+        //            }
+        //        });
+        //    OMap.row(range) = curdata.t();
+        //}
 
         for (int range = 0; range < numRadiusSteps; range++) { // sweep across distance
             for (int angle = 0; angle < numAngleSteps; angle++) { // sweep across rays
                 int startIdx = angle * rayAngleSteps;
+                //int endIdx = std::min(laser_scan->angle_max, laser_scan->angle_min + (angle+1)*rayAngleSteps);
                 for (int step = 0; step < rayAngleSteps; step++) {
                     int curIdx = std::min(startIdx + step, numRanges); 
 		    float dp = laser_scan->ranges[curIdx];
@@ -211,17 +307,80 @@ namespace costmap_2d {
                 }
             }
         }
+        //int ox, oy;
         for (int ci = 0; ci < x_size*resolution; ci++) {
             for (int cj = y_size*resolution/2; cj < y_size*resolution; cj++) {
+                //printf("x:%d\n", cm2om_x[ci*x_size*resolution + cj]);
+                //printf("y:%d\n", cm2om_y[ci*x_size*resolution + cj]);
+                //ox = cm2om_x[ci*y_size*resolution+cj];
+                //oy = cm2om_y[ci*y_size*resolution+cj];
                 int idx = cm2om[ci*y_size*resolution+cj];
                 costmap_[ci*y_size*resolution + cj] = NO_INFORMATION;
                 if (idx != -1) {
+                    //costmap_[ci*y_size*resolution + cj] = OMap(ox, oy);
                     costmap_[ci*y_size*resolution + cj] = occMap[idx];
                 }
             }
         }
-        //clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-        //printf("laserscan callback time: %f\n", TimeSpecToSeconds(&end) - TimeSpecToSeconds(&start));
+
+        //// iterate over costmap
+        //for (int ci = 1; ci < x_size*resolution; ci++) {
+        //    for (int cj = y_size*resolution/2; cj < y_size*resolution; cj++) {
+        //        float x_dist = std::abs((ci * rstep) - x_size/2);
+        //        float y_dist = std::abs((cj * rstep) - y_size/2);
+        //        if (!(x_dist > max_x || y_dist > max_y)) {
+        //           // iterate over occMap
+        //           bool found = false;
+        //           for (int range = 0; range < numRadiusSteps; range++) {
+        //               int angleStart, angleEnd;
+        //               if (ci < x_size*resolution/2) {
+        //                   angleStart = 0;
+        //                   angleEnd = (numAngleSteps / 2) + 1;
+        //               }
+        //               else {
+        //                   angleStart = (numAngleSteps / 2) - 1;
+        //                   angleEnd = numAngleSteps;
+        //               }
+        //               //for (int angle = 0; angle < numAngleSteps; angle++) {
+        //               for (int angle = angleStart; angle < angleEnd-1; angle++) {
+        //                   float r1 = range * radiusStep;
+        //                   float r2 = (range+1) * radiusStep;
+        //                   int a1 = angle * rayAngleSteps;
+        //                   int a2 = (angle+1) * rayAngleSteps;
+        //                   float x_h = std::max(r2 * sine_table.at(a1), r2 * sine_table.at(a2));
+        //                   float x_l = std::min(r1 * sine_table.at(a1), r1 * sine_table.at(a2));
+        //                   float y_h = std::max(r2 * cosine_table.at(a1), r2 * cosine_table.at(a2));
+        //                   float y_l = std::max(r1 * cosine_table.at(a1), r1 * cosine_table.at(a2));
+        //                   float x_h1 = x_h;
+        //                   float y_h1 = y_h;
+        //                   float x_l1 = x_l;
+        //                   float y_l1 = y_l;
+        //                   if (a1 < (numRanges / 2 + 5) || a1 > (numRanges / 2 - 5) ||
+        //                       a2 < (numRanges / 2 + 5) || a2 > (numRanges / 2 - 5)) {
+        //                       x_h1 = x_h + 0.05;
+        //                       y_h1 = y_h + 0.05;
+        //                       x_l1 = x_l - 0.05;
+        //                       y_l1 = y_l - 0.05;
+        //                   }
+        //                   // check occMap limits
+        //                   if ((x_dist < x_h1 && x_dist >= x_l1 && y_dist < y_h1 && y_dist >= y_l1)) {
+        //                       costmap_[(ci-1)*x_size*resolution + cj] = occMap[range * numAngleSteps + angle];
+        //                       found = true;
+        //                       break;
+        //                   }
+        //               }
+        //               if (found == true) {
+        //                   break;
+        //               }
+        //           }
+        //        }
+        //        else {
+        //           costmap_[(ci-1)*x_size*resolution + cj] = NO_INFORMATION;
+        //        }
+        //    }
+        //}
+        clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+        printf("laserscan callback time: %f\n", TimeSpecToSeconds(&end) - TimeSpecToSeconds(&start));
     }
     
     

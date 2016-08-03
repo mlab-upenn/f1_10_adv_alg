@@ -37,6 +37,8 @@
  *********************************************************************/
 #include <ros/ros.h>
 #include <costmap_2d/costmap_2d_ros.h>
+#include <costmap_2d/virtual_scan_layer.h>
+
 
 int main(int argc, char** argv)
 {

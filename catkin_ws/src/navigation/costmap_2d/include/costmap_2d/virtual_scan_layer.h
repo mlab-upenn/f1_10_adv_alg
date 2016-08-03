@@ -26,8 +26,6 @@
 #include <costmap_2d/ObstaclePluginConfig.h>
 #include <costmap_2d/footprint.h>
 
-#include <armadillo>
-
 namespace costmap_2d {
     class VirtualScanLayer : public CostmapLayer {
     public:
@@ -47,8 +45,7 @@ namespace costmap_2d {
     
       void laserScanCallback(const sensor_msgs::LaserScanConstPtr& message,
                              const boost::shared_ptr<costmap_2d::ObservationBuffer>& buffer);
-      
-    
+     
     protected:
       virtual void setupDynamicReconfigure(ros::NodeHandle& nh);
     

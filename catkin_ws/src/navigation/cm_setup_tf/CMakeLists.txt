@@ -3,6 +3,7 @@ project(cm_setup_tf)
 
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
+  visualization_msgs
   roscpp
   tf
 )

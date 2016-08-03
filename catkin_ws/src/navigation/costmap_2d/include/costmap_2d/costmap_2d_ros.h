@@ -47,6 +47,7 @@
 #include <geometry_msgs/PolygonStamped.h>
 #include <dynamic_reconfigure/server.h>
 #include <pluginlib/class_loader.h>
+#include "fake_trajectory/TrajectoryVector.h"
 
 class SuperValue : public XmlRpc::XmlRpcValue
 {
@@ -253,6 +254,10 @@ private:
   std::vector<geometry_msgs::Point> padded_footprint_;
   float footprint_padding_;
   costmap_2d::Costmap2DConfig old_config_;
+
+  // trajectory 
+  ros::Subscriber trajectory_sub_;
+  ros::Publisher trajectory_pub_;
 };
 // class Costmap2DROS
 }  // namespace costmap_2d
