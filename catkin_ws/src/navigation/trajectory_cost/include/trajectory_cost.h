@@ -6,14 +6,17 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <map_msgs/OccupancyGridUpdate.h>
 #include "fake_trajectory/TrajectoryVector.h"
-#include "trajectory_cost/TrajectoryCostVector.h"
+#include "fake_trajectory/TrajectorySims.h"
+#include "trajectory_cost/TrajectoryID.h"
+#include <algorithm>
+#include <vector>
 
 
-fake_trajectory::TrajectoryVector latestTrajectory;
+fake_trajectory::TrajectorySims latestTrajectorySet;
 int resolution;
 int width;
 int height;
 std::vector<signed char> data;
-trajectory_cost::TrajectoryCostVector tc;
+trajectory_cost::TrajectoryID trajID;
 
 #endif

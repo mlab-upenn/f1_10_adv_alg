@@ -15,14 +15,12 @@
   <build_depend>nav_msgs</build_depend>
   <build_depend>map_msgs</build_depend>
   <build_depend>fake_trajectory</build_depend>
-  <run_depend>message_generation</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>nav_msgs</run_depend>
   <run_depend>map_msgs</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>fake_trajectory</run_depend>
-
   <export>
   </export>
 </package>
