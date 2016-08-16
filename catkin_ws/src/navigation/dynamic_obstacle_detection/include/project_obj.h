@@ -14,8 +14,11 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <random_numbers/random_numbers.h>
+#include <algorithm>
+#include <vector>
 
 static const int NUM_PARTICLES = 10;
+static const float DT = 0.1;
 static const unsigned char NO_INFORMATION = 255;
 static const unsigned char LETHAL_OBSTACLE = 254;
 static const unsigned char INSCRIBED_INFLATED_OBSTACLE = 253;
@@ -23,8 +26,10 @@ static const unsigned char OCCLUDED = 128;
 static const unsigned char FREE_SPACE = 0;
 
 // geometry is const (m)
-static const double geo_w = 0.55118; 
-static const double geo_l = 0.29718;
+static const float geo_l = 0.55118; 
+static const float geo_w = 0.29718;
+struct Point { float x, y; };
+Point rotate_point (float cx, float cy, float angle, float p);
 
 bool init = true;
 Eigen::Quaternion<double> q;
@@ -48,6 +53,7 @@ typedef struct _pf_meas {
 pf_meas prev;
 
 // virtual scan
+void createLaserScan(std::vector<pf_meas> pf_list);
 bool vs_init = true;
 
 double maxRadius;
@@ -59,6 +65,22 @@ double rstep;
 int resolution;
 int* occMap;
 std::vector<int> cm2om;
-unsigned char* costmap_;
+unsigned char* pf_costmap;
+unsigned char* ls_costmap;
+
+// virtual scan port
+double angleIncrement;
+double rayAngleSize;
+double minAngle;
+double maxAngle;
+double vbuffer;
+float maxRangeVal;
+int numRadiusSteps;
+int numAngleSteps;
+int numRanges;
+
+void initVirtualScan(const sensor_msgs::LaserScanConstPtr& laser_scan);
+unsigned char* calcVirtualScan(std::vector<float> laserscanArray);
+void compareVirtualScan(unsigned char* pf_costmap);
 
 #endif

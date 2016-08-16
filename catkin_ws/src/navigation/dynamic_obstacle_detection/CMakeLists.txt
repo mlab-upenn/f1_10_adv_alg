@@ -17,6 +17,8 @@ catkin_package(
   CATKIN_DEPENDS visualization_msgs nav_msgs tf
 )
 
+SET(CMAKE_CXX_FLAGS "-std=c++11 -g ${CMAKE_CXX_FLAGS}")
+
 include_directories( include/
     ${catkin_INCLUDE_DIRS}
     ${Eigen_INCLUDE_DIRS}
