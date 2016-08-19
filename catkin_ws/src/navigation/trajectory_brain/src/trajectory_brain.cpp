@@ -66,7 +66,7 @@
 
 /* CONSTANTS */
 // Seed point for state lattice in meters
-static const double LOOKAHEAD = 4.1; 
+static const double LOOKAHEAD = 6.5; 
 // How wide is the track typically, meters
 static const double TRACKWIDTH = 3.0;
 // Loop rate for node in Hz.
@@ -345,6 +345,7 @@ int main(int argc, char **argv)
       
       ros::spinOnce();
       ROS_INFO_STREAM("Running Trajectory Generator");     
+      costComputed = TRUE;
       if(costComputed==TRUE)
       {
         costComputed=FALSE;
@@ -376,24 +377,22 @@ int main(int argc, char **argv)
             }
         }
 
-        printf("test\n");
         printf("sims.trajectorysims.size: %d\n", sims.trajectorysims.size());
         for (int j = 0; j < sims.trajectorysims.size(); j++) {
-            printf("traj size: %d", sims.trajectorysims[j].trajectory.size());
-            printf("%f ", sims.trajectorysims[j].trajectory[0].x);
+            printf("traj %i size: %d, ", j, sims.trajectorysims[j].trajectory.size());
+            printf("x: %f ", sims.trajectorysims[j].trajectory[0].x);
         }
         printf("\n");
 
-
-        ROS_INFO("Trajectory published");
+        ROS_INFO("Trajectory published\n");
         pub.publish(sims);
 
       }
-
       else
       {
         ROS_INFO_STREAM("Cost Compute Blocking...");
       }
+      ros::spinOnce();
     
     loop_rate.sleep();
   }

@@ -5,14 +5,14 @@
 #include <geometry_msgs/Point.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <map_msgs/OccupancyGridUpdate.h>
-#include "fake_trajectory/TrajectoryVector.h"
-#include "fake_trajectory/TrajectorySims.h"
+#include "trajectory_brain/TrajectoryVector.h"
+#include "trajectory_brain/TrajectorySims.h"
 #include "trajectory_cost/TrajectoryID.h"
 #include <algorithm>
 #include <vector>
 
 
-fake_trajectory::TrajectorySims latestTrajectorySet;
+trajectory_brain::TrajectorySims latestTrajectorySet;
 int resolution;
 int width;
 int height;

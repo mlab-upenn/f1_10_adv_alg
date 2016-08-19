@@ -15,7 +15,7 @@ void costmapCallback(const map_msgs::OccupancyGridUpdateConstPtr& costmsg) {
         // iterate over each trajectory
         for (int i = 0; i < latestTrajectorySet.trajectorysims.size(); i++) {
             int cost = 0;
-            fake_trajectory::TrajectoryVector latestTrajectory = latestTrajectorySet.trajectorysims[i];
+            trajectory_brain::TrajectoryVector latestTrajectory = latestTrajectorySet.trajectorysims[i];
             // iterate over points in each trajectory
             for (int j = 0; j < latestTrajectory.trajectory.size(); j++) {
                 double x = latestTrajectory.trajectory[j].x;
@@ -58,19 +58,19 @@ void costmapCallback(const map_msgs::OccupancyGridUpdateConstPtr& costmsg) {
     }
 }
 
-void trajectoryCallback(const fake_trajectory::TrajectorySims::ConstPtr& trajSetMsg) {
+void trajectoryCallback(const trajectory_brain::TrajectorySims::ConstPtr& trajSetMsg) {
     if (!trajSetMsg->trajectorysims.empty()) {
         latestTrajectorySet.trajectorysims.clear();
         // iterate over full trajectories
         for (unsigned int i = 0; i < trajSetMsg->trajectorysims.size(); i++) {
-            fake_trajectory::TrajectoryVector singleTrajectory = trajSetMsg->trajectorysims[i];
-            //if (!singleTrajectory.trajectory.empty()) {
-            //    // iterate over trajectory points
-            //    for (unsigned int i = 0; i < singleTrajectory.trajectory.size(); i++) {
+            trajectory_brain::TrajectoryVector singleTrajectory = trajSetMsg->trajectorysims[i];
+            if (!singleTrajectory.trajectory.empty()) {
+                // iterate over trajectory points
+                for (unsigned int i = 0; i < singleTrajectory.trajectory.size(); i++) {
             //        latestTrajectory.trajectory.push_back(singleTrajectory.trajectory[i]);
-            //        //ROS_INFO("(%f, %f)", latestTrajectory.trajectory[i].x, latestTrajectory.trajectory[i].y);
-            //    }
-            //}
+                    ROS_INFO("(%f, %f)", singleTrajectory.trajectory[i].x, singleTrajectory.trajectory[i].y);
+                }
+            }
             latestTrajectorySet.trajectorysims.push_back(singleTrajectory);
         }
     }
@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
     ros::Publisher pub = nh.advertise<trajectory_cost::TrajectoryID>("/trajectory/costID", 1);
     ros::Subscriber sub0 = nh.subscribe<nav_msgs::OccupancyGrid>("/costmap_node/costmap/costmap", 1, &costmapInitCallback);
     ros::Subscriber sub1 = nh.subscribe<map_msgs::OccupancyGridUpdate>("/costmap_node/costmap/costmap_updates", 1, &costmapCallback);
-    ros::Subscriber sub2 = nh.subscribe<fake_trajectory::TrajectorySims>("/trajectory", 1, &trajectoryCallback);
+    ros::Subscriber sub2 = nh.subscribe<trajectory_brain::TrajectorySims>("/trajectorysims", 1, &trajectoryCallback);
     ros::Rate loop_rate(30);
 
     while (ros::ok()) {
