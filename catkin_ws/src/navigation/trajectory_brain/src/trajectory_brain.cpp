@@ -54,15 +54,18 @@
 // Change this directory name...? Think this is right...
 #include "trajectory_brain/TrajectoryVector.h"
 #include "trajectory_brain/TrajectorySims.h"
-#include "trajectory_brain/TrajectoryID.h"
+#include "trajectory_cost/TrajectoryID.h"
 #include "trajectory_brain.h"
 
 // These are all the RBFA networks...
+//#include <rbfa.h>
 #include <rbfa1.c>
 #include <rbfa2.c>
 #include <rbfa3.c>
 #include <rbfa4.c>
 #include <rbfa5.c>
+
+//#define DEBUG
 
 /* CONSTANTS */
 // Seed point for state lattice in meters
@@ -70,9 +73,9 @@ static const double LOOKAHEAD = 6.5;
 // How wide is the track typically, meters
 static const double TRACKWIDTH = 3.0;
 // Loop rate for node in Hz.
-static const int LOOP_RATE = 10;
+static const int LOOP_RATE = 20;
 // Timestep
-static const double TIME_STEP = 0.1;
+static const double TIME_STEP = 0.2;
 
 /* LOCKS */
 static bool costComputed = TRUE;
@@ -106,7 +109,9 @@ union Parameters rbfTrajectory(double sx, double sy, double theta)
   union Spline curvature;
   union Parameters reparam;
 
+#ifdef DEBUG
   printf("sx: %f, sy: %f, theta %f\n", sx, sy, theta);
+#endif
 
   reparam.s = 0.0;
   reparam.a = 0.0;
@@ -117,7 +122,9 @@ union Parameters rbfTrajectory(double sx, double sy, double theta)
 
   if (sx < 10.00 && sx > 4.00 && sy > -4.00 && sy <4.00)
   {
+#ifdef DEBUG
   printf("Generating a trajectory\n");
+#endif
   // This is the arc length of the trajectory, 
   curvature.s = rbfa1(sx, sy, theta*10.0);
   // This is the curvature at the knot point 0
@@ -171,8 +178,9 @@ void poseCallback(const nav_msgs::Odometry& pose_msg)
 // Trajectory Cost Recieved
 // Get the best trajectory from the lattice
 /////////////////////////////////////////////////////////////////
-void trajCostCallback( const trajectory_brain::TrajectoryID& cost_msg)
+void trajCostCallback( const trajectory_cost::TrajectoryID& cost_msg)
 {
+  ROS_INFO("cost_id: %d", cost_msg.trajID);
   costComputed = TRUE;
   bestTrajID = cost_msg.trajID;
   current_traj = trajLattice[bestTrajID];
@@ -223,9 +231,9 @@ trajectory_brain::TrajectoryVector trajFwdSim( union Parameters traj, union Stat
     double theta = veh.theta;
     double v = veh.v;
 
-    ROS_INFO("traj.s: %f", traj.s);
-    ROS_INFO("veh.v: %f", veh.v);
-    ROS_INFO("traj time: %f", trajectory_time);
+#ifdef DEBUG
+    ROS_INFO("traj.s: %f, veh.v: %f, traj time: %f\n", traj.s, veh.v, trajectory_time);
+#endif
 
     while (simtime < trajectory_time)
     {
@@ -332,21 +340,17 @@ int main(int argc, char **argv)
 
   // Subscribe to the following topics:
   ros::Subscriber odometry_subscriber = nh.subscribe("/odom",1, poseCallback);
-  ros::Subscriber cost_subscriber = nh.subscribe("/trajectory/cost", 1, trajCostCallback);
+  ros::Subscriber cost_subscriber = nh.subscribe("/trajectory/costID", 1, trajCostCallback);
   // Set the loop rate unit is Hz
   ros::Rate loop_rate(LOOP_RATE); 
-
 
   // Here we go....
   while (ros::ok())
   {
-
-      std_msgs::Bool _lf_stat;
-      
-      ros::spinOnce();
       ROS_INFO_STREAM("Running Trajectory Generator");     
-      costComputed = TRUE;
-      if(costComputed==TRUE)
+      std_msgs::Bool _lf_stat;
+     
+      if (costComputed == TRUE)
       {
         costComputed=FALSE;
         // Compute set of goals...
@@ -356,37 +360,40 @@ int main(int argc, char **argv)
 	union StateLattice lattice;
         // Compute the state lattice
         lattice = computeStateLattice(vehGlobal);
-
-        //trajectory_brain::TrajectoryVector simSamples[LOOP_COUNT];
-        //trajectory_brain::TrajectoryVector simSamples;
         sims.trajectorysims.clear();
-
 
         for(int i=0; i<LOOP_COUNT; i++)
         {
             trajLattice[i] = rbfTrajectory(lattice.x[i], lattice.y[i], 0.0);
             if(trajLattice[i].success == TRUE)
             {
-                printf("pushed %d onto sims\n", i);
                 trajectory_brain::TrajectoryVector tv = trajFwdSim(trajLattice[i],vehGlobal, i);
                 sims.trajectorysims.push_back(tv);
+#ifdef DEBUG
+                printf("pushed %d onto sims\n", i);
                 printf("id: %d\n", tv.trajID);
                 for (int j = 0; j < tv.trajectory.size(); j++) {
                     printf("px: %f py: %f\n", tv.trajectory[j].x, tv.trajectory[j].y);
                 }
+#endif
             }
         }
 
+#ifdef DEBUG
         printf("sims.trajectorysims.size: %d\n", sims.trajectorysims.size());
         for (int j = 0; j < sims.trajectorysims.size(); j++) {
             printf("traj %i size: %d, ", j, sims.trajectorysims[j].trajectory.size());
             printf("x: %f ", sims.trajectorysims[j].trajectory[0].x);
         }
         printf("\n");
+#endif
 
         ROS_INFO("Trajectory published\n");
         pub.publish(sims);
-
+        if (initialPass) {
+            costComputed = TRUE;
+            initialPass = false;
+        }
       }
       else
       {

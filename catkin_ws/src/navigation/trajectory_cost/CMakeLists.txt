@@ -30,3 +30,4 @@ include_directories( include ${catkin_INCLUDE_DIRS} )
 
 add_executable(trajcost src/trajectory_cost.cpp)
 target_link_libraries(trajcost ${catkin_LIBRARIES})
+add_dependencies(trajcost trajectory_brain ${catkin_EXPORTED_TARGETS})

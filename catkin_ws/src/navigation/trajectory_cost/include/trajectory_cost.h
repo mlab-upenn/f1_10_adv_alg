@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <vector>
 
+#include <visualization_msgs/Marker.h>
+
 
 trajectory_brain::TrajectorySims latestTrajectorySet;
 int resolution;
@@ -18,5 +20,7 @@ int width;
 int height;
 std::vector<signed char> data;
 trajectory_cost::TrajectoryID trajID;
+
+visualization_msgs::Marker line_strip;
 
 #endif

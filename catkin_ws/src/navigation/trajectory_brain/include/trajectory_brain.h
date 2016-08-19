@@ -66,10 +66,12 @@ union Parameters rbfTrajectory(double sx, double sy, double theta);
 
 void poseCallback(const nav_msgs::Odometry& pose_msg);
 
-void trajCostCallback( const trajectory_brain::TrajectoryID& cost_msg);
+void trajCostCallback( const trajectory_cost::TrajectoryID& cost_msg);
 
 trajectory_brain::TrajectoryVector trajFwdSim( union Parameters traj, union State veh, unsigned int trajID);
 
 StateLattice computeStateLattice( union State veh);
 
 ros::Publisher spline_parameters_pub;
+
+bool initialPass = true;

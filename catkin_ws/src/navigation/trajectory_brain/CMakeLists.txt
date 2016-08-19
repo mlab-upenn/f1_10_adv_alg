@@ -40,17 +40,24 @@ generate_messages(
   nav_msgs
 )
 
+#find_library(rbfa NAMES "rbfa1" PATHS "lib")
+
 ###################################
 ## catkin specific configuration ##
 ###################################
 catkin_package(
   INCLUDE_DIRS include
   CATKIN_DEPENDS roscpp std_msgs nav_msgs geometry_msgs tf trajectory_cost
+#  LIBRARIES rbfa
 )
 
 ###########
 ## Build ##
 ###########
+
+#add_library( rbfa EXCLUDE_FROM_ALL ${rbfa} )
+#add_custom_command( TARGET rbfa POST_BUILD COMMAND cp ${rbfa} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/ )
+#set_target_properties(rbfa PROPERTIES LINKER_LANGUAGE CXX)
 
 SET(CMAKE_CXX_FLAGS "-std=c++0x -O2 -g -Wall -Wno-unused-result -DROS ${CMAKE_CXX_FLAGS}")
 
@@ -62,3 +69,6 @@ include_directories(
 add_executable(trajectory_brain src/trajectory_brain.cpp)
 target_link_libraries(trajectory_brain ${catkin_LIBRARIES})
 add_dependencies(trajectory_brain trajectory_cost ${catkin_EXPORTED_TARGETS})
+
+#install( FILES ${rbfa}
+#   DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})

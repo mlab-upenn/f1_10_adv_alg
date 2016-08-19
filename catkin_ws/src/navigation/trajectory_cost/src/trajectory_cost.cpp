@@ -1,4 +1,5 @@
 #include "trajectory_cost.h"
+//#define DEBUG
 
 void costmapInitCallback(const nav_msgs::OccupancyGridConstPtr& costmsg) {
     resolution = int(1/costmsg->info.resolution);
@@ -64,16 +65,35 @@ void trajectoryCallback(const trajectory_brain::TrajectorySims::ConstPtr& trajSe
         // iterate over full trajectories
         for (unsigned int i = 0; i < trajSetMsg->trajectorysims.size(); i++) {
             trajectory_brain::TrajectoryVector singleTrajectory = trajSetMsg->trajectorysims[i];
+#ifdef DEBUG
             if (!singleTrajectory.trajectory.empty()) {
                 // iterate over trajectory points
                 for (unsigned int i = 0; i < singleTrajectory.trajectory.size(); i++) {
-            //        latestTrajectory.trajectory.push_back(singleTrajectory.trajectory[i]);
                     ROS_INFO("(%f, %f)", singleTrajectory.trajectory[i].x, singleTrajectory.trajectory[i].y);
                 }
             }
+#endif
             latestTrajectorySet.trajectorysims.push_back(singleTrajectory);
         }
     }
+
+    // TODO: publish visualization marker 
+
+}
+
+void vis_init() {
+    line_strip.header.frame_id = "/base_link";
+    line_strip.header.stamp = ros::Time();
+    line_strip.action = visualization_msgs::Marker::ADD;
+  
+    // Define message id and scale (thickness)
+    line_strip.id = 1;
+    line_strip.type = visualization_msgs::Marker::LINE_STRIP;
+    
+    // Set the color and transparency (blue and solid)
+    line_strip.scale.x = 0.08;
+    line_strip.color.r = 1.0;
+    line_strip.color.a = 1.0;
 }
 
 
@@ -82,10 +102,13 @@ int main(int argc, char **argv) {
     ros::NodeHandle nh;
 
     ros::Publisher pub = nh.advertise<trajectory_cost::TrajectoryID>("/trajectory/costID", 1);
+    ros::Publisher pubvis = nh.advertise<visualization_msgs::Marker>("/trajectory/marker", 1);
     ros::Subscriber sub0 = nh.subscribe<nav_msgs::OccupancyGrid>("/costmap_node/costmap/costmap", 1, &costmapInitCallback);
     ros::Subscriber sub1 = nh.subscribe<map_msgs::OccupancyGridUpdate>("/costmap_node/costmap/costmap_updates", 1, &costmapCallback);
     ros::Subscriber sub2 = nh.subscribe<trajectory_brain::TrajectorySims>("/trajectorysims", 1, &trajectoryCallback);
     ros::Rate loop_rate(30);
+
+    vis_init();
 
     while (ros::ok()) {
         pub.publish(trajID);

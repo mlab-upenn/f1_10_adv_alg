@@ -1,3 +1,5 @@
+#include <math.h>
+
 double sgm211(double x) { return tanh(10000 * x); } 
 #define W21111 1
 #define W21121 1
