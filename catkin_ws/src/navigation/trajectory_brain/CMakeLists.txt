@@ -31,6 +31,7 @@ add_message_files(
   FILES
   TrajectoryVector.msg
   TrajectorySims.msg
+  drive_param.msg
 )
 
 generate_messages(
@@ -70,5 +71,7 @@ add_executable(trajectory_brain src/trajectory_brain.cpp)
 target_link_libraries(trajectory_brain ${catkin_LIBRARIES})
 add_dependencies(trajectory_brain trajectory_cost ${catkin_EXPORTED_TARGETS})
 
+add_executable(twist_gen src/state_generator.cpp)
+target_link_libraries(twist_gen ${catkin_LIBRARIES})
 #install( FILES ${rbfa}
 #   DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
