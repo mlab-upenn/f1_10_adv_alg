@@ -47,7 +47,6 @@
 #include <geometry_msgs/PolygonStamped.h>
 #include <dynamic_reconfigure/server.h>
 #include <pluginlib/class_loader.h>
-#include "fake_trajectory/TrajectoryVector.h"
 
 class SuperValue : public XmlRpc::XmlRpcValue
 {

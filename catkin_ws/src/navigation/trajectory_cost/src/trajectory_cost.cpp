@@ -1,5 +1,6 @@
 #include "trajectory_cost.h"
 //#define DEBUG
+#define RVIZ
 
 void costmapInitCallback(const nav_msgs::OccupancyGridConstPtr& costmsg) {
     resolution = int(1/costmsg->info.resolution);
@@ -47,14 +48,25 @@ void costmapCallback(const map_msgs::OccupancyGridUpdateConstPtr& costmsg) {
             }
             costVector.push_back(cost);
         }
-        //for (int i = 0; i < costVector.size(); i++) {
-        //    printf("%d ", costVector[i]);
-        //}
-        //printf("\n");
+#ifdef DEBUG
+        for (int i = 0; i < costVector.size(); i++) {
+            printf("%d ", costVector[i]);
+        }
+        printf("\n");
+#endif
 
         // return index of min cost
-        std::vector<int>::iterator result = std::min_element(std::begin(costVector), std::end(costVector));
-        int minElem = std::distance(std::begin(costVector), result);
+        int minElem = 0;
+        int minElemVal = std::numeric_limits<int>::max();
+        for (int i = 0; i < costVector.size(); i++) {
+            if (costVector[i] > 0 && costVector[i] < minElemVal) {
+                minElemVal = costVector[i];
+                minElem = i;
+            }
+        }
+        //ROS_INFO("trajID: %d", minElem);
+        //std::vector<int>::iterator result = std::min_element(std::begin(costVector), std::end(costVector));
+        //int minElem = std::distance(std::begin(costVector), result);
         trajID.trajID = latestTrajectorySet.trajectorysims[minElem].trajID;
     }
 }
@@ -62,6 +74,7 @@ void costmapCallback(const map_msgs::OccupancyGridUpdateConstPtr& costmsg) {
 void trajectoryCallback(const trajectory_brain::TrajectorySims::ConstPtr& trajSetMsg) {
     if (!trajSetMsg->trajectorysims.empty()) {
         latestTrajectorySet.trajectorysims.clear();
+        line_array.markers.clear();
         // iterate over full trajectories
         for (unsigned int i = 0; i < trajSetMsg->trajectorysims.size(); i++) {
             trajectory_brain::TrajectoryVector singleTrajectory = trajSetMsg->trajectorysims[i];
@@ -74,26 +87,31 @@ void trajectoryCallback(const trajectory_brain::TrajectorySims::ConstPtr& trajSe
             }
 #endif
             latestTrajectorySet.trajectorysims.push_back(singleTrajectory);
+
+#ifdef RVIZ
+            // publish visualization messages
+            visualization_msgs::Marker line_strip;
+            line_strip.header.frame_id = "trajectory_frame";
+            line_strip.header.stamp = ros::Time();
+            line_strip.action = visualization_msgs::Marker::ADD;
+  
+            // Define message id and scale (thickness)
+            line_strip.id = i;
+            line_strip.type = visualization_msgs::Marker::LINE_STRIP;
+            
+            // Set the color and transparency (blue and solid)
+            line_strip.scale.x = 0.01;
+            line_strip.color.b = 1.0;
+            line_strip.color.a = 1.0;
+            
+            // Add points
+            for (unsigned int i = 0; i < singleTrajectory.trajectory.size(); i++) {
+                line_strip.points.push_back(singleTrajectory.trajectory[i]);
+            }
+            line_array.markers.push_back(line_strip);
+#endif
         }
     }
-
-    // TODO: publish visualization marker 
-
-}
-
-void vis_init() {
-    line_strip.header.frame_id = "/base_link";
-    line_strip.header.stamp = ros::Time();
-    line_strip.action = visualization_msgs::Marker::ADD;
-  
-    // Define message id and scale (thickness)
-    line_strip.id = 1;
-    line_strip.type = visualization_msgs::Marker::LINE_STRIP;
-    
-    // Set the color and transparency (blue and solid)
-    line_strip.scale.x = 0.08;
-    line_strip.color.r = 1.0;
-    line_strip.color.a = 1.0;
 }
 
 
@@ -101,17 +119,27 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "trajcost");
     ros::NodeHandle nh;
 
-    ros::Publisher pub = nh.advertise<trajectory_cost::TrajectoryID>("/trajectory/costID", 1);
-    ros::Publisher pubvis = nh.advertise<visualization_msgs::Marker>("/trajectory/marker", 1);
+    ros::Publisher pub_id = nh.advertise<trajectory_cost::TrajectoryID>("/trajectory/costID", 1);
+    ros::Publisher pub_vis = nh.advertise<visualization_msgs::MarkerArray>("/trajectory/marker_array", 1);
     ros::Subscriber sub0 = nh.subscribe<nav_msgs::OccupancyGrid>("/costmap_node/costmap/costmap", 1, &costmapInitCallback);
     ros::Subscriber sub1 = nh.subscribe<map_msgs::OccupancyGridUpdate>("/costmap_node/costmap/costmap_updates", 1, &costmapCallback);
     ros::Subscriber sub2 = nh.subscribe<trajectory_brain::TrajectorySims>("/trajectorysims", 1, &trajectoryCallback);
     ros::Rate loop_rate(30);
 
-    vis_init();
-
     while (ros::ok()) {
-        pub.publish(trajID);
+        pub_id.publish(trajID);
+
+#ifdef RVIZ
+        // modify selected trajectory 
+        if (!line_array.markers.empty()) {
+            ROS_INFO("trajID: %d", trajID.trajID);
+            line_array.markers[trajID.trajID].scale.x = 0.01; 
+            line_array.markers[trajID.trajID].color.g = 1.0;
+            line_array.markers[trajID.trajID].color.a = 1.0;
+        }
+#endif
+        pub_vis.publish(line_array);
+
         ros::spinOnce();
         loop_rate.sleep();
     }
