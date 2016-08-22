@@ -27,7 +27,7 @@ ENDIF()
 ## Declare ROS messages, services and actions ##
 ################################################
 
-add_message_files(
+add_message_files(DIRECTORY msg
   FILES
   TrajectoryVector.msg
   TrajectorySims.msg
@@ -48,17 +48,12 @@ generate_messages(
 ###################################
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS roscpp std_msgs nav_msgs geometry_msgs tf trajectory_cost
-#  LIBRARIES rbfa
+  CATKIN_DEPENDS message_runtime roscpp std_msgs nav_msgs geometry_msgs tf trajectory_cost
 )
 
 ###########
 ## Build ##
 ###########
-
-#add_library( rbfa EXCLUDE_FROM_ALL ${rbfa} )
-#add_custom_command( TARGET rbfa POST_BUILD COMMAND cp ${rbfa} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/ )
-#set_target_properties(rbfa PROPERTIES LINKER_LANGUAGE CXX)
 
 SET(CMAKE_CXX_FLAGS "-std=c++0x -O2 -g -Wall -Wno-unused-result -DROS ${CMAKE_CXX_FLAGS}")
 
@@ -67,11 +62,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(trajectory_brain src/trajectory_brain.cpp)
+add_executable(trajectory_brain src/trajectory_brain.cpp src/rbfa1.cpp src/rbfa2.cpp src/rbfa3.cpp src/rbfa4.cpp src/rbfa5.cpp)
 target_link_libraries(trajectory_brain ${catkin_LIBRARIES})
+add_dependencies(trajectory_brain ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_dependencies(trajectory_brain trajectory_cost ${catkin_EXPORTED_TARGETS})
 
 add_executable(twist_gen src/state_generator.cpp)
 target_link_libraries(twist_gen ${catkin_LIBRARIES})
-#install( FILES ${rbfa}
-#   DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
