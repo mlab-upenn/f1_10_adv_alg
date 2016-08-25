@@ -123,7 +123,7 @@ namespace costmap_2d {
         float max_x;
         float max_y;
         if (init_ == true) {
-            cm2om.reserve(x_size*y_size*resolution);
+            cm2om.reserve(x_size*y_size*resolution*resolution);
 
             max_x = maxRadius * std::max(std::sin(laser_scan->angle_max), std::abs(std::sin(laser_scan->angle_min)));
             max_y = maxRadius;
@@ -171,9 +171,7 @@ namespace costmap_2d {
                                    break;
                                }
                            }
-                           if (found) {
-                               break;
-                           }
+                           if (found) { break; }
                            if (range == numRadiusSteps - 1) {
                                cm2om.push_back(-1);
                            }
@@ -188,13 +186,14 @@ namespace costmap_2d {
             ROS_INFO("finished init");
         }
 
+
         for (int range = 0; range < numRadiusSteps; range++) { // sweep across distance
             for (int angle = 0; angle < numAngleSteps; angle++) { // sweep across rays
                 int startIdx = angle * rayAngleSteps;
                 for (int step = 0; step < rayAngleSteps; step++) {
                     int curIdx = std::min(startIdx + step, numRanges); 
 		    float dp = laser_scan->ranges[curIdx];
-                    if (std::isnan(dp)) {
+                    if (std::isnan(dp) || dp == -1 ) {
 			dp = laser_scan->range_max;
                     }
 		    if (dp > (range*radiusStep - vbuffer) && dp < (range*radiusStep + vbuffer)) {

@@ -137,7 +137,6 @@ target_link_libraries(costmap_2d_cloud
 add_executable(costmap_2d_node src/costmap_2d_node.cpp)
 target_link_libraries(costmap_2d_node
     costmap_2d
-    armadillo
     )
 
 install( TARGETS
