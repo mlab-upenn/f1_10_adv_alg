@@ -68,15 +68,15 @@
 
 #include <omp.h>
 
-//#define DEBUG
+#define DEBUG
 
 /* CONSTANTS */
 // Seed point for state lattice in meters
-static const double LOOKAHEAD = 6.5;
+static const double LOOKAHEAD = 5.5;
 // How wide is the track typically, meters
 static const double TRACKWIDTH = 2.0;
 // Loop rate for node in Hz.
-static const int LOOP_RATE = 20;
+static const int LOOP_RATE = 10;
 // Timestep
 static const double TIME_STEP = 0.2;
 
@@ -142,14 +142,22 @@ union Parameters rbfTrajectory(double sx, double sy, double theta)
     curvature.kappa_3 = rbfa5(sx, sy, theta*10.0);
     // Note that the request was succesfull
     curvature.success= TRUE;
-
+    printf("s: %f, k0: %f, k1: %f, k2: %f, k3: %f", curvature.s, curvature.kappa_0, curvature.kappa_1, curvature.kappa_2, curvature.kappa_3);
     // Now compute reparameterization
     reparam.s = curvature.s;
     reparam.a = curvature.kappa_0;
-    reparam.b = ((-0.50)*(-2*curvature.kappa_3 + 11*curvature.kappa_0 - 18*curvature.kappa_1 + 9*curvature.kappa_2)/curvature.s);
-    reparam.c = ((4.50)*(-curvature.kappa_3 + 2*curvature.kappa_0 - 5*curvature.kappa_1 +4*curvature.kappa_2)/(curvature.s*curvature.s));
-    reparam.e = ((-4.50)*(-curvature.kappa_3 + curvature.kappa_0 - 3*curvature.kappa_1 + 3*curvature.kappa_2)/(curvature.s*curvature.s*curvature.s));
+    reparam.b = ((-0.50)*(-2.0*curvature.kappa_3 + 11.0*curvature.kappa_0 - 18.0*curvature.kappa_1 + 9.0*curvature.kappa_2)/curvature.s);
+    reparam.c = ((4.50)*(-curvature.kappa_3 + 2.0*curvature.kappa_0 - 5.0*curvature.kappa_1 +4.0*curvature.kappa_2)/(curvature.s*curvature.s));
+    reparam.e = ((-4.50)*(-curvature.kappa_3 + curvature.kappa_0 - 3.0*curvature.kappa_1 + 3.0*curvature.kappa_2)/(curvature.s*curvature.s*curvature.s));
     reparam.success = TRUE;
+    
+   }
+  
+  else 
+  {
+    #ifdef DEBUG
+    printf("Trajectory out of bounds\n");
+    #endif
   }
 
   // Return the results
@@ -158,7 +166,7 @@ union Parameters rbfTrajectory(double sx, double sy, double theta)
 
 /////////////////////////////////////////////////////////////////
 // Pose Callback Function
-// Handle new poses coming from localization and state estimation.
+// Handle new poses coming from localization and state estimation.A""
 /////////////////////////////////////////////////////////////////
 
 void poseCallback(const nav_msgs::Odometry& pose_msg)
@@ -210,60 +218,63 @@ void trajCostCallback( const trajectory_cost::TrajectoryID& cost_msg)
 /////////////////////////////////////////////////////////////////
 // NOTE: Should this be part of the kernel, alternate parallelize with OMP post kernel. Maybe try both ways
 trajectory_brain::TrajectoryVector trajFwdSim( union Parameters traj, union State veh, unsigned int trajID, unsigned int numPts = 60)
-{
-  if (veh.v == 0) {
-    veh.v = 1;
-  }
-  if (traj.s == 0) {
-    traj.s = 1;
-  }
-  double trajectory_time = traj.s/veh.v;
-  double simtime = 0.0;
+{  
+  // Setup the output to write to...
+  trajectory_brain::TrajectoryVector samples; 
+  // Setup the fixed parameters
 
-  //double a = traj.a;
-  double b = traj.b;
-  double c = traj.c;
-  double e = traj.e;
+if(traj.s != 0.0 && traj.success== TRUE)
+ {
+ 	double v = 1.0;
+        double trajectory_time = traj.s/v;
+  	double b = traj.b;
+  	double c = traj.c;
+  	double e = traj.e;
+  	double kappa = 0.0;
+  	double theta = 0.0;
+	double dtheta = 0.0;
+  	double dx = 0.0;
+  	double dy = 0.0;
+  
 
-  trajectory_brain::TrajectoryVector samples;
-  samples.trajID = trajID;
+  	// Give it an ID
+  	samples.trajID = trajID;
+  	
+  	// Store vehicle state as a sequence of points
+  	geometry_msgs::Point p;
+  	p.x = 0.0;
+  	p.y = 0.0;
+  	p.z = 0.0;
+  
+  	// Set the number of points to simulate...
+  	double points = 60.00;
 
-  geometry_msgs::Point p;
-  p.x = 0.0;
-  p.y = 0.0;
-  p.z = 0.0;
+  	// Compute the timestep...
+  	double dt = trajectory_time / points;
 
-  double kappa = veh.kappa;
-  double theta = veh.theta;
-  double v = veh.v;
+  	#ifdef DEBUG
+  	ROS_INFO("traj.s: %f, veh.v: %f, traj time: %f\n", traj.s, veh.v, trajectory_time);
+  	#endif
 
-  double dt = trajectory_time / numPts;
+  	double simtime = 0.0;
 
-  #ifdef DEBUG
-  ROS_INFO("traj.s: %f, veh.v: %f, traj time: %f\n", traj.s, veh.v, trajectory_time);
-  #endif
-
-  while (simtime < trajectory_time)
-  {
-
-    double dkappa = b*v + 2*c*v*v*simtime + 3*e*v*v*v*pow(simtime,2);
-    kappa = kappa + dkappa;
-    double dtheta = v*kappa;
-    theta = theta + dtheta;
-
-    p.x = p.x + v*cos(theta);
-    p.y = p.y + v*sin(theta);
-    p.z = 0;
-    samples.trajectory.push_back(p);
-
-    simtime = simtime + dt;
-  }
-
-  return samples;
-
+  	while (simtime < trajectory_time)
+  	{
+    		dx = v*cos(theta)*dt;
+    		dy = v*sin(theta)*dt;
+    		p.x = p.x +dx;
+    		p.y = p.y +dy;
+    		p.z = 0.0;
+    		dtheta = v*kappa*dt;  
+    		theta = theta + dtheta;
+    		kappa = (b*v*simtime + c*v*v*simtime*simtime + e*v*v*v*simtime*simtime*simtime);   
+    		samples.trajectory.push_back(p);
+    		simtime = simtime + dt;
+  	}
+}
+return samples;
 
 }
-
 /////////////////////////////////////////////////////////////////
 // Compute State Lattice Points
 // This function computes an array of points to generate
@@ -276,9 +287,11 @@ trajectory_brain::TrajectoryVector trajFwdSim( union Parameters traj, union Stat
 // that stays within the bounds. STEP 1.
 StateLattice computeStateLattice( union State veh)
 {
+  int LATTICE_POINTS = 17;
 
   // Read in the current orientation of the vehicle
-  double theta = veh.theta;
+  //double theta = veh.theta;
+  double theta = 0.0;
 
   // Compute x_0, the x seed point for the state lattice
   double x_0 = LOOKAHEAD*cos(theta);
@@ -287,27 +300,37 @@ StateLattice computeStateLattice( union State veh)
   double y_0 = LOOKAHEAD*sin(theta);
 
   // Compute the spacing
-  double dlattice_x = (TRACKWIDTH/(SAMPLES-1.00))*sin(theta);
-  double dlattice_y = (TRACKWIDTH/(SAMPLES-1.00))*cos(theta);
+  double dlattice_x = (TRACKWIDTH/7.0)*sin(theta);
+  double dlattice_y = (TRACKWIDTH/7.0)*cos(theta);
 
   union StateLattice lattice;
 
-  for (int i=0; i<LOOP_COUNT; i++)
+  for (int i=0; i<LATTICE_POINTS; i++)
   {
+    if(i==0)
+    {
+	lattice.x[i] = x_0;
+        lattice.y[i] = y_0;
+    }
     // Compute offsets for positive and negative lattice points
-    double offset_x = ((double) i) * dlattice_x;
-    double offset_y = ((double) i) * dlattice_y;
 
-    // Put them in the data structure relative to the seed point
-    lattice.x[i] = x_0 + offset_x;
-    lattice.x[i+(int)SAMPLES] = x_0 - offset_x;
-    lattice.y[i] = y_0 + offset_y;
-    lattice.y[i+(int)SAMPLES] = y_0 - offset_y;
-  }
-
-  return lattice;
-
-
+   if (i>=1 && i<=8)
+   {
+	double offset_x = ((double) i) * dlattice_x;
+        double offset_y = ((double) i) * dlattice_y;
+	lattice.x[i] = x_0 + offset_x;
+	lattice.y[i] = y_0 + offset_y;
+   }
+   
+   if (i >= 9 && i <=16)
+   {
+	double offset_x = ((double) i) * dlattice_x;
+        double offset_y = ((double) i) * dlattice_y;
+	lattice.x[i] = x_0 - offset_x;
+        lattice.y[i] = y_0 - offset_y;
+   }
+ }
+   return lattice;
 }
 
 #define TRAJECTORY_PTS 60
@@ -378,7 +401,7 @@ int main(int argc, char **argv)
   // Set the loop rate unit is Hz
   ros::Rate loop_rate(LOOP_RATE);
 
-  bool trajstatus[LOOP_COUNT];
+  bool trajstatus[17];
 
   #ifdef CUDA_KERNEL
     State *dev_state;
@@ -411,7 +434,7 @@ int main(int argc, char **argv)
       // Compute the state lattice
       lattice = computeStateLattice(vehGlobal);
       sims.trajectorysims.clear();
-      sims.trajectorysims.resize(LOOP_COUNT);
+      sims.trajectorysims.resize(17);
 
       #ifdef CUDA_KERNEL
       cudaMemcpy(dev_state, &vehGlobal, sizeof(State), cudaMemcpyHostToDevice);
@@ -430,8 +453,9 @@ int main(int argc, char **argv)
 
       #else
       #pragma omp parallel for
-      for(int i=0; i<LOOP_COUNT; i++)
+      for(int i=0; i<17; i++)
       {
+	printf("x: %f, y: %f\n", lattice.x[i], lattice.y[i]);
         trajLattice[i] = rbfTrajectory(lattice.x[i], lattice.y[i], 0.0);
         trajstatus[i] = trajLattice[i].success;
 
@@ -443,20 +467,20 @@ int main(int argc, char **argv)
           printf("I have %d threads\n", omp_get_num_threads());
           printf("pushed %d onto sims\n", i);
           printf("id: %d\n", tv.trajID);
-          for (int j = 0; j < tv.trajectory.size(); j++) {
-            printf("px: %f py: %f\n", tv.trajectory[j].x, tv.trajectory[j].y);
-          }
+          //for (int j = 0; j < tv.trajectory.size(); j++) {
+          //  printf("px: %f py: %f\n", tv.trajectory[j].x, tv.trajectory[j].y);
+          //}
           #endif
         }
       }
 
       #ifdef DEBUG
-      printf("sims.trajectorysims.size: %d\n", sims.trajectorysims.size());
-      for (int j = 0; j < sims.trajectorysims.size(); j++) {
-        printf("traj %i size: %d, ", j, sims.trajectorysims[j].trajectory.size());
-        printf("x: %f ", sims.trajectorysims[j].trajectory[0].x);
-      }
-      printf("\n");
+      //printf("sims.trajectorysims.size: %d\n", sims.trajectorysims.size());
+      //for (int j = 0; j < sims.trajectorysims.size(); j++) {
+        //printf("traj %i size: %d, ", j, sims.trajectorysims[j].trajectory.size());
+        //printf("x: %f ", sims.trajectorysims[j].trajectory[0].x);
+      //}
+      //printf("\n");
       #endif
       #endif
 

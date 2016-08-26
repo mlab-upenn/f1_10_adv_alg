@@ -36,24 +36,24 @@ void costmapCallback(const map_msgs::OccupancyGridUpdateConstPtr& costmsg) {
                 if (cx <= width && cx >= 0 && cy <= height && cy >= 0) {
                     //ROS_INFO("cost: %d", data[cx*width + cy]);
                     if (data[cx*width + cy] == -1) {
-                        cost = cost + 25;
+                        cost = cost + 75;
                     } 
                     else {
                         cost = cost + data[cx*width + cy];
                     }
                 } 
                 else {
-                    cost = cost + 25;
+                    cost = cost + 150;
                 }
             }
             costVector.push_back(cost);
         }
-#ifdef DEBUG
+
+        // print costVector
         for (int i = 0; i < costVector.size(); i++) {
             printf("%d ", costVector[i]);
         }
         printf("\n");
-#endif
 
         // return index of min cost
         int minElem = 0;

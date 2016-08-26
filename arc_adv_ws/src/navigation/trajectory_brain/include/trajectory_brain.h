@@ -55,8 +55,8 @@ union StateLattice
 {
     struct
     {
-          double x[LOOP_COUNT];
-          double y[LOOP_COUNT];
+          double x[17];
+          double y[17];
     };
 
     double lattice_param[2];
