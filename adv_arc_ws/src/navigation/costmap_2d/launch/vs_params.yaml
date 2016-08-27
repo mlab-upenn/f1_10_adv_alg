@@ -14,6 +14,9 @@ track_unknown_space: false
 
 plugins: 
 - {name: virtual_scan_layer, type: "costmap_2d::VirtualScanLayer"}
+- {name: inflation, type: "costmap_2d::InflationLayer"}
+inflation:
+    inflation_radius: 0.1
 virtual_scan_layer:
     virtual_scan_source: base_scan
     base_scan: {data_type: LaserScan, sensor_frame: /laser, topic: /scan,

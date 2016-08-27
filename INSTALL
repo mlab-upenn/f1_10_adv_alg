@@ -1,0 +1,79 @@
+// L4T 21.3 Install
+// on host machine
+wget http://developer.download.nvidia.com/embedded/L4T/r21_Release_v3.0/Tegra124_Linux_R21.3.0_armhf.tbz2
+wget http://developer.download.nvidia.com/embedded/L4T/r21_Release_v3.0/Tegra_Linux_Sample-Root-Filesystem_R21.3.0_armhf.tbz2
+tar -xvf Tegra124_Linux_R21.3.0_armhf.tbz2
+cd Linux_for_Tegra/rootfs
+sudo tar xpf ../../Tegra_Linux_Sample-Root-Filesystem_R21.3.0_armhf.tbz2
+cd ..
+sudo ./apply_binaries.sh
+// hold down recovery and press reset at the same time
+lsusb | grep -i nvidia // should show Bus 001 or similar result
+sudo ./flash.sh jetson-tk1 mmcblk0p1
+
+// Grinch Install
+// on jeton tk1
+wget http://www.jarzebski.pl/files/jetsontk1/grinch-21.3.4/zImage
+wget http://www.jarzebski.pl/files/jetsontk1/grinch-21.3.4/jetson-tk1-grinch-21.3.4-modules.tar.bz2
+wget http://www.jarzebski.pl/files/jetsontk1/grinch-21.3.4/jetson-tk1-grinch-21.3.4-firmware.tar.bz2
+sudo tar -C /lib/modules -vxjf jetson-tk1-grinch-21.3.4-modules.tar.bz2
+sudo tar -C /lib -vxjf jetson-tk1-grinch-21.3.4-firmware.tar.bz2
+sudo cp zImage /boot/zImage
+// reboot jetson
+
+// Configure Repositories
+// go to software & updates tab and select universe, restricted, multiverse
+// verify the following are in /etc/apt/sources.list
+deb http://ports.ubuntu.com/ubuntu-ports/ trusty main
+deb-src http://ports.ubuntu.com/ubuntu-ports/ trusty main
+deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates main
+deb-src http://ports.ubuntu.com/ubuntu-ports/ trusty-updates main
+deb http://ports.ubuntu.com/ubuntu-ports/ trusty-security main
+deb-src http://ports.ubuntu.com/ubuntu-ports/ trusty-security main
+
+// Install cuda-toolkit
+wget http://developer.download.nvidia.com/embedded/L4T/r21_Release_v3.0/cuda-repo-l4t-r21.3-6-5-prod_6.5-42_armhf.deb
+sudo dpkg -i cuda-repo-l4t-r21.3-6-5-prod_6.5-42_armhf.deb
+sudo apt-get update
+sudo apt-get install cuda-toolkit-6-5
+sudo usermod -a -G video $USER
+echo "# Add CUDA bin & library paths:" >> ~/.bashrc
+echo "export PATH=/usr/local/cuda/bin:$PATH" >> ~/.bashrc
+echo "export LD_LIBRARY_PATH=/usr/local/cuda/lib:$LD_LIBRARY_PATH" >> ~/.bashrc
+source ~/.bashrc
+// verify install using "nvcc -V"
+
+// Install ROS
+sudo update-locale LANG=C LANGUAGE=C LC_ALL=C LC_MESSAGES=POSIX
+sudo sh -c ‘echo “deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main” > /etc/opt/sources.list.d/ros-latestlist’
+sudo apt-key adv --keyserver hkp://ha.pool.sks-keyservers.net --recv-key 0xB01FA116
+sudo apt-get update
+sudo apt-get install ros-indigo-ros-base
+echo 'source /opt/ros/indigo/setup.bash' >> ~/.bashrc
+sudo rosdep init
+rosdep update
+
+// Install git & download f1_10 deployment branch
+sudo apt-get install git
+git clone http://github.com/mlab-upenn/f1_10_adv_alg.git
+git fetch origin
+git checkout remotes/origin/staging
+
+// Install dependencies
+sudo apt-get install ros-indigo-tf
+sudo apt-get install libeigen3-dev
+sudo apt-get install libmrpt-dev
+sudo apt-get install ros-indigo-map-msg
+sudo apt-get install ros-indigo-laser-geometry
+sudo apt-get install ros-indigo-pcl-conversions
+sudo apt-get install ros-indigo-pcl-ros
+
+// Install sensor specifics
+sudo apt-get install ros-indigo-hokuyo-node
+sudo apt-get install ros-indigo-um7
+
+// Install helfpul tools
+rosdep install rviz; echo 'unset GTK_IM_MODULE' >> ~/.bashrc;
+sudo apt-get install tmux
+sudo apt-get install ruby
+sudo gem install tmuxinator

@@ -128,6 +128,7 @@ namespace costmap_2d {
             max_x = maxRadius * std::max(std::sin(laser_scan->angle_max), std::abs(std::sin(laser_scan->angle_min)));
             max_y = maxRadius;
             for (int ci = 0; ci < x_size*resolution; ci++) {
+                printf("Waiting for init %d / %d ...\n", ci, x_size*resolution);
                 for (int cj = 0; cj < y_size*resolution; cj++) {
                     float x_dist = std::abs((ci * rstep) - x_size/2);
                     float y_dist = std::abs((cj * rstep) - y_size/2);

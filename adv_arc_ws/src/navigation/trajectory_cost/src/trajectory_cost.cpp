@@ -22,28 +22,29 @@ void costmapCallback(const map_msgs::OccupancyGridUpdateConstPtr& costmsg) {
             for (int j = 0; j < latestTrajectory.trajectory.size(); j++) {
                 double x = latestTrajectory.trajectory[j].x;
                 double y = latestTrajectory.trajectory[j].y;
-                //ROS_INFO("(%f, %f)", x, y);
 
                 // (0,0) is costmap[0] is bottom right corner
                 // (0,y) is costmap[y] is top right corner
                 // (x,0) is costmap[x*height] is bottom left corner
                 // (x,y) is costmap[x*height + y] is top left corner
-                int cx = width/2 - round(latestTrajectory.trajectory[j].x * resolution);
+                int cx = width/2 + round(latestTrajectory.trajectory[j].x * resolution);
                 int cy = height/2 + round(latestTrajectory.trajectory[j].y * resolution);
-                //ROS_INFO("(%d, %d)", cx, cy);
+                //ROS_INFO("(%f, %f) -> (%d, %d) : %d", x,y, cx, cy, data[cy*width + cx]);
 
                 // check bounds
                 if (cx <= width && cx >= 0 && cy <= height && cy >= 0) {
-                    //ROS_INFO("cost: %d", data[cx*width + cy]);
-                    if (data[cx*width + cy] == -1) {
-                        cost = cost + 75;
+                    // Modify costs
+                    if (data[cy*height + cx] == -1) { // UNK
+                        cost = std::numeric_limits<int>::max();
+                        break;
                     } 
                     else {
-                        cost = cost + data[cx*width + cy];
+                        cost = cost + data[cy*width + cx];
                     }
                 } 
-                else {
-                    cost = cost + 150;
+                else { // Out of Bounds
+                    cost = std::numeric_limits<int>::max();
+                    break;
                 }
             }
             costVector.push_back(cost);
@@ -91,7 +92,7 @@ void trajectoryCallback(const trajectory_brain::TrajectorySims::ConstPtr& trajSe
 #ifdef RVIZ
             // publish visualization messages
             visualization_msgs::Marker line_strip;
-            line_strip.header.frame_id = "trajectory_frame";
+            line_strip.header.frame_id = "base_link";
             line_strip.header.stamp = ros::Time();
             line_strip.action = visualization_msgs::Marker::ADD;
   
