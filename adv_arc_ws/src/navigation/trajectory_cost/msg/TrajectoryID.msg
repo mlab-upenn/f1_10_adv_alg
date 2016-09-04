@@ -1,1 +1,1 @@
-uint8 trajID
+int32 trajID

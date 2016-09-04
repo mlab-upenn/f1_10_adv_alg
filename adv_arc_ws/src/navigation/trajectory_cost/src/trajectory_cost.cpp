@@ -34,7 +34,7 @@ void costmapCallback(const map_msgs::OccupancyGridUpdateConstPtr& costmsg) {
                 // check bounds
                 if (cx <= width && cx >= 0 && cy <= height && cy >= 0) {
                     // Modify costs
-                    if (data[cy*height + cx] == -1) { // UNK
+                    if (data[cy*height + cx] == -1 || data[cy*height+cx] >= 99) { // UNK, Inflation, Lethal
                         cost = std::numeric_limits<int>::max();
                         break;
                     } 
@@ -57,7 +57,7 @@ void costmapCallback(const map_msgs::OccupancyGridUpdateConstPtr& costmsg) {
         printf("\n");
 
         // return index of min cost
-        int minElem = 0;
+        int minElem = -1;
         int minElemVal = std::numeric_limits<int>::max();
         for (int i = 0; i < costVector.size(); i++) {
             if (costVector[i] > 0 && costVector[i] < minElemVal) {
@@ -65,10 +65,14 @@ void costmapCallback(const map_msgs::OccupancyGridUpdateConstPtr& costmsg) {
                 minElem = i;
             }
         }
-        //ROS_INFO("trajID: %d", minElem);
-        //std::vector<int>::iterator result = std::min_element(std::begin(costVector), std::end(costVector));
-        //int minElem = std::distance(std::begin(costVector), result);
-        trajID.trajID = latestTrajectorySet.trajectorysims[minElem].trajID;
+        // all trajectories are invalid
+        if (minElem == -1) {
+            trajID.trajID = -1;
+        }
+        // only swap trajectory if previous one is no longer valid
+        else if (trajID.trajID == -1 || costVector[trajID.trajID] == std::numeric_limits<int>::max()) {
+            trajID.trajID = latestTrajectorySet.trajectorysims[minElem].trajID;
+        }
     }
 }
 
@@ -134,13 +138,14 @@ int main(int argc, char **argv) {
         // modify selected trajectory 
         if (!line_array.markers.empty()) {
             ROS_INFO("trajID: %d", trajID.trajID);
-            line_array.markers[trajID.trajID].scale.x = 0.01; 
-            line_array.markers[trajID.trajID].color.g = 1.0;
-            line_array.markers[trajID.trajID].color.a = 1.0;
+            if (trajID.trajID != -1) {
+                line_array.markers[trajID.trajID].scale.x = 0.01; 
+                line_array.markers[trajID.trajID].color.g = 1.0;
+                line_array.markers[trajID.trajID].color.a = 1.0;
+            }
+            pub_vis.publish(line_array);
         }
 #endif
-        pub_vis.publish(line_array);
-
         ros::spinOnce();
         loop_rate.sleep();
     }
