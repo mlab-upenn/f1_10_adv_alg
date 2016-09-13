@@ -22,7 +22,6 @@ namespace costmap_2d {
     
       VirtualScanLayer::matchSize();
       current_ = true;
-      init_ = true;
     
       global_frame_ = layered_costmap_->getGlobalFrameID();
     
@@ -50,6 +49,8 @@ namespace costmap_2d {
       source_node.param("max_radius", maxRadius, 3.0);
       source_node.param("radius_step", radiusStep, 0.1);
       source_node.param("ray_angle_steps", rayAngleSteps, 10);
+
+      source_node.param("init", init_, true);
 
       if (!sensor_frame.empty()) {
         sensor_frame = tf::resolve(tf_prefix, sensor_frame);
@@ -108,7 +109,7 @@ namespace costmap_2d {
                                              const boost::shared_ptr<ObservationBuffer>& buffer) {
         //clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
-        float vbuffer = radiusStep / 2;
+        float vbuffer = radiusStep * 10;
         int numRanges = laser_scan->ranges.size();
         float rayAngleSize = laser_scan->angle_increment * rayAngleSteps; // sweep step of angles
 
@@ -184,9 +185,27 @@ namespace costmap_2d {
                 }
             }
             init_ = false;
+
+            // write cm2om to file 
+            std::ofstream cm ("costmap.dat");
+            if (cm.is_open()) {
+                for (unsigned int i = 0; i < cm2om.size(); i++) {
+                    cm << cm2om[i] << std::endl;
+                }
+                cm.close();
+            }
             ROS_INFO("finished init");
         }
-
+        else { // load om from file
+            std::ifstream cm ("costmap.dat");
+            int val;
+            if (cm.is_open()) {
+                while (cm >> val) {
+                    cm2om.push_back(val);
+                }
+                cm.close();
+            }
+        }
 
         for (int range = 0; range < numRadiusSteps; range++) { // sweep across distance
             for (int angle = 0; angle < numAngleSteps; angle++) { // sweep across rays
@@ -206,7 +225,7 @@ namespace costmap_2d {
                         break;
                     }
                     else {
-                        occMap[range * numAngleSteps + angle] = FREE_SPACE;
+                        occMap[range * numAngleSteps + angle] = FREE_SPACE + 1;
                     }
                 }
             }

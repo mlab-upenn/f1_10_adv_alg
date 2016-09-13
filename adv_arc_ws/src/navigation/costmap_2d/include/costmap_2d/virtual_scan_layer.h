@@ -3,6 +3,8 @@
 
 #include <math.h>
 #include <vector>
+#include <iostream>
+#include <fstream>
 
 #include <ros/ros.h>
 #include <costmap_2d/layer.h>
@@ -65,7 +67,7 @@ namespace costmap_2d {
       dynamic_reconfigure::Server<costmap_2d::ObstaclePluginConfig> *dsrv_;
     
       int combination_method_;
-      bool init_;
+      bool init_ = true;
       double cm_width_, cm_height_, cm_resolution_;
       double maxRadius, radiusStep;
       int rayAngleSteps;  

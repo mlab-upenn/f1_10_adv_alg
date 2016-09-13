@@ -72,11 +72,11 @@
 
 /* CONSTANTS */
 // Seed point for state lattice in meters
-static const double LOOKAHEAD = 5.5;
+static const double LOOKAHEAD = 5.2;
 // How wide is the track typically, meters
 static const double TRACKWIDTH = 2.0;
 // Loop rate for node in Hz.
-static const int LOOP_RATE = 10;
+static const int LOOP_RATE = 20;
 // Timestep
 static const double TIME_STEP = 0.2;
 
@@ -150,14 +150,6 @@ union Parameters rbfTrajectory(double sx, double sy, double theta)
     reparam.c = ((4.50)*(-curvature.kappa_3 + 2.0*curvature.kappa_0 - 5.0*curvature.kappa_1 +4.0*curvature.kappa_2)/(curvature.s*curvature.s));
     reparam.e = ((-4.50)*(-curvature.kappa_3 + curvature.kappa_0 - 3.0*curvature.kappa_1 + 3.0*curvature.kappa_2)/(curvature.s*curvature.s*curvature.s));
     reparam.success = TRUE;
-    
-   }
-  
-  else 
-  {
-    #ifdef DEBUG
-    printf("Trajectory out of bounds\n");
-    #endif
   }
 
   // Return the results
@@ -200,13 +192,14 @@ void trajCostCallback( const trajectory_cost::TrajectoryID& cost_msg)
 
   std_msgs::Float64MultiArray spline;
   spline.data.clear();
-
-  for(int i = 0; i < 6;i++)
+  if(bestTrajID>=0)
   {
-    spline.data.push_back(current_traj.param_value[i]);
-  }
-
-  spline_parameters_pub.publish(spline);
+     for(int i = 0; i < 6;i++)
+     {
+    	spline.data.push_back(current_traj.param_value[i]);
+        spline_parameters_pub.publish(spline);
+     }	
+  }	
 
 }
 
@@ -217,7 +210,7 @@ void trajCostCallback( const trajectory_cost::TrajectoryID& cost_msg)
 // Can be used for for dealing with latency.
 /////////////////////////////////////////////////////////////////
 // NOTE: Should this be part of the kernel, alternate parallelize with OMP post kernel. Maybe try both ways
-trajectory_brain::TrajectoryVector trajFwdSim( union Parameters traj, union State veh, unsigned int trajID, unsigned int numPts = 60)
+trajectory_brain::TrajectoryVector trajFwdSim( union Parameters traj, union State veh, unsigned int trajID, unsigned int numPts = 120)
 {  
   // Setup the output to write to...
   trajectory_brain::TrajectoryVector samples; 
@@ -247,7 +240,7 @@ if(traj.s != 0.0 && traj.success== TRUE)
   	p.z = 0.0;
   
   	// Set the number of points to simulate...
-  	double points = 60.00;
+  	double points = 120.00;
 
   	// Compute the timestep...
   	double dt = trajectory_time / points;
@@ -267,7 +260,7 @@ if(traj.s != 0.0 && traj.success== TRUE)
     		p.z = 0.0;
     		dtheta = v*kappa*dt;  
     		theta = theta + dtheta;
-    		kappa = (b*v*simtime + c*v*v*simtime*simtime + e*v*v*v*simtime*simtime*simtime);   
+    		kappa = (b*v*simtime + c*v*v*simtime + e*v*v*v*simtime*simtime);   
     		samples.trajectory.push_back(p);
     		simtime = simtime + dt;
   	}
@@ -288,6 +281,7 @@ return samples;
 StateLattice computeStateLattice( union State veh)
 {
   int LATTICE_POINTS = 17;
+ // int LATTICE_POINTS = 34;
 
   // Read in the current orientation of the vehicle
   //double theta = veh.theta;
@@ -304,7 +298,7 @@ StateLattice computeStateLattice( union State veh)
   double dlattice_y = (TRACKWIDTH/7.0)*cos(theta);
 
   union StateLattice lattice;
-
+  
   for (int i=0; i<LATTICE_POINTS; i++)
   {
     if(i==0)
@@ -324,8 +318,8 @@ StateLattice computeStateLattice( union State veh)
    
    if (i >= 9 && i <=16)
    {
-	double offset_x = ((double) i) * dlattice_x;
-        double offset_y = ((double) i) * dlattice_y;
+	double offset_x = ((double) (i-8)) * dlattice_x;
+        double offset_y = ((double) (i-8)) * dlattice_y;
 	lattice.x[i] = x_0 - offset_x;
         lattice.y[i] = y_0 - offset_y;
    }
@@ -333,7 +327,7 @@ StateLattice computeStateLattice( union State veh)
    return lattice;
 }
 
-#define TRAJECTORY_PTS 60
+#define TRAJECTORY_PTS 120
 
 //#define CUDA_KERNEL
 #ifdef CUDA_KERNEL
