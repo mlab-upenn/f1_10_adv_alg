@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 		// Get desired velocity at next state...
 		vdes = veh.vdes;
 		// This computes the next command
-		veh = nextState();
+		nextState();
 
 		// Set lateral velocity
 		double v_lateral = vdes*sin(veh.theta);
@@ -144,13 +144,13 @@ int main(int argc, char **argv)
 		odom.pose.pose.position.y=veh.sy;
 
 		// Ensure kappa is reasonable
-		veh.kappa = std::min(kmax, veh.kappa);
-		veh.kappa = std::max(kmin, veh.kappa); 
+		//veh.kappa = std::min(kmax, veh.kappa);
+		//veh.kappa = std::max(kmin, veh.kappa); 
 		// Set yaw rate
 
 		// This can be used for steering angle...
 		odom.twist.twist.angular.z=vdes*veh.kappa;
-		msg.angle = odom.twist.twist.angular.z*(57.29)*(5/30);
+		msg.angle = odom.twist.twist.angular.z*(57.29)*(5/30)*20;
 		msg.velocity = 10;
 		//            if(tele_cmd.steering>5)
 		//                tele_cmd.steering = 5;
@@ -211,13 +211,12 @@ union State nextState()
 	double theta = veh.theta;
 	double v = veh.v;
 
-	double dkappa = b * v + 2 * c * v * v * next_time + 3 * e * v * v * v * pow(next_time, 2);
-	kappa = kappa + dkappa;
-	double dtheta = v * kappa;
+	kappa = b * v * next_time + c * v * v * next_time * next_time + e * v * v * v * pow(next_time, 3);
+	double dtheta = v * kappa * next_time;
 	theta = theta + dtheta;
 
-	veh.sx = veh.sx + v * cos(theta);
-	veh.sy = veh.sy + v * sin(theta);
+	veh.sx = veh.sx + v * cos(theta) * next_time;
+	veh.sy = veh.sy + v * sin(theta) * next_time;
 	veh.kappa = kappa;
 	veh.theta = theta;
 
